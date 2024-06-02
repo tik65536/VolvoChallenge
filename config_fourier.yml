@@ -1,0 +1,50 @@
+experimentname: &experimentname 'fourier_skiplink_lfreq_8_hc4_liftup16_maxFold_10'
+experimentpath: &experimentpath './Experiments'  # if 
+
+model:
+    fourier_skiplink_b.Fourier_skiplink: 
+      pooling: 'max'
+      in_channel: 1
+      dim : [3,297]
+      mode: 128
+      hiddenactivation: 'GELU'
+      activation: 'GELU'
+      hidden_channel : 4
+      project_channel: 8
+      concatlowhighFreq: False
+      maxFold: 1
+      fftActivate: True
+    loss:
+      #BCEWithLogitsLoss:
+      #MSELoss:
+      HuberLoss:
+    opt:
+      Adam:
+        lr: 0.001
+    epoch: 1000
+    dataset: 'TrainTestDataSet'
+    datasetloader:
+      batch_size: 16
+      shuffle: True
+    accuracymetric: # torcheval.metrics
+      #threshold: 0.5
+      R2Score:
+    weightexport:
+      path: [ *experimentpath, *experimentname, 'weight' ]
+      # path: './exptest/weight' it also accept the original path as string
+      selection: 'best' # support best or all
+    experimentresult:
+      path: [ *experimentpath, *experimentname, 'result' ]
+      # path: './exptest/result' it also accept the original path as string
+      exportSample: False
+data:
+  loader: 'VolvoCSVDataLoader'
+  filetype: 'csv'
+  windowsize: 3
+  predict_interval: 1
+  slide: 1
+  training:
+    data: './data/training'
+  testing:
+    data: './data/training'
+ 
