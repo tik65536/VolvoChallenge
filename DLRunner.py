@@ -266,7 +266,7 @@ class DLRunner():
             trainstarttime = time.time()
             for batch, data in enumerate(tqdm(self.trainloader, desc=f'Epoch {i:3d}, Training',position=0, leave=True)):
                 indata, groundtrue, filename = data[0], data[1], data[2]
-                groundtrue = groundtrue.to(self.device)
+                #groundtrue = groundtrue.to(self.device)
                 indata = indata.to(self.device)
                 for j in range(0,indata.shape[1]-(windowsize*(predict_interval+1)),slide):
                     input_ = torch.unsqueeze(indata[:,j:j+windowsize,:],1)
@@ -299,7 +299,7 @@ class DLRunner():
                     for valbatch, data in enumerate(tqdm(self.valloader, desc=f'Epoch {i:3d}, Val',position=0, leave=True)):
                         indata, groundtrue, filename = data[0], data[1], data[2]
                         indata = indata.to(self.device)
-                        groundtrue = groundtrue.to(self.device)
+                        #groundtrue = groundtrue.to(self.device)
                         for j in range(0,indata.shape[1]-(windowsize*(predict_interval+1)),slide):
                             input_ = torch.unsqueeze(indata[:,j:j+windowsize,:],1)
                             target = torch.unsqueeze(indata[:,j+windowsize:j+(windowsize*(predict_interval+1)),:],1)
@@ -324,7 +324,7 @@ class DLRunner():
                 teststarttime = time.time()
                 for testbatch, data in enumerate(tqdm(self.testloader, desc=f'Epoch {i:3d}, Testing',position=0, leave=True)):
                     indata, groundtrue, filename = data[0], data[1], data[2]
-                    groundtrue = groundtrue.to(self.device)
+                    #groundtrue = groundtrue.to(self.device)
                     indata = indata.to(self.device)
                     for j in range(0,indata.shape[1]-(windowsize*(predict_interval+1)),slide):
                         input_ = torch.unsqueeze(indata[:,j:j+windowsize,:],1)
