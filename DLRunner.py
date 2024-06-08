@@ -265,7 +265,7 @@ class DLRunner():
             batch_cust_valresult = []
             trainstarttime = time.time()
             for batch, data in enumerate(tqdm(self.trainloader, desc=f'Epoch {i:3d}, Training',position=0, leave=True)):
-                indata, groundtrue = data[0], data[1]
+                indata, groundtrue, filename = data[0], data[1], data[2]
                 groundtrue = groundtrue.to(self.device)
                 indata = indata.to(self.device)
                 for j in range(0,indata.shape[1]-(windowsize*(predict_interval+1)),slide):
