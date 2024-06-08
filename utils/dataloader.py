@@ -145,8 +145,9 @@ class VolvoCSVDataLoader(Dataset):
             tmp = grp[1][readings_cols]
             self.label += grp[1].iloc[:,4].values.tolist()
             self.data[i,:len(tmp),:]=tmp
-        self.label = np.array(self.label)
-        self.grp_idx = np.array(self.grp_idx)
+        self.label = torch.Tensor(self.label)
+        self.grp_idx = torch.Tensor(self.grp_idx)
+        self.data = torch.Tensor(self.data)
 
     def __len__(self):
         return self.data.shape[0]
