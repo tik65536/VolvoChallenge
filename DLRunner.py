@@ -246,7 +246,7 @@ class DLRunner():
     # Training
         testbesloss = torch.inf
         additionalcriterion = 0
-        windowsize = self.config['data'].get('windowsize', windowsize)
+        windowsize = self.model.in_channel
         slide = self.config['data'].get('slide', slide)
         predict_interval = self.config['data'].get('predict_interval', predict_interval)
         for i in range(self.epoch):
@@ -269,8 +269,8 @@ class DLRunner():
                 #groundtrue = groundtrue.to(self.device)
                 indata = indata.to(self.device)
                 for j in range(0,indata.shape[1]-(windowsize*(predict_interval+1)),slide):
-                    input_ = torch.unsqueeze(indata[:,j:j+windowsize,:],1)
-                    target = torch.unsqueeze(indata[:,j+windowsize:j+(windowsize*(predict_interval+1)),:],1)
+                    input_ = indata[:,j:j+windowsize,:]
+                    target = indata[:,j+windowsize:j+(windowsize*(predict_interval+1)),:]
                     output = self.model(input_)
                     loss = self.criterion(output, target)
                     trainingloss += loss
@@ -301,8 +301,8 @@ class DLRunner():
                         indata = indata.to(self.device)
                         #groundtrue = groundtrue.to(self.device)
                         for j in range(0,indata.shape[1]-(windowsize*(predict_interval+1)),slide):
-                            input_ = torch.unsqueeze(indata[:,j:j+windowsize,:],1)
-                            target = torch.unsqueeze(indata[:,j+windowsize:j+(windowsize*(predict_interval+1)),:],1)
+                            input_ = indata[:,j:j+windowsize,:]
+                            target = indata[:,j+windowsize:j+(windowsize*(predict_interval+1)),:]
                             output = self.model(input_)
                             loss = self.criterion(output, target)
                             valloss += loss
@@ -327,8 +327,8 @@ class DLRunner():
                     #groundtrue = groundtrue.to(self.device)
                     indata = indata.to(self.device)
                     for j in range(0,indata.shape[1]-(windowsize*(predict_interval+1)),slide):
-                        input_ = torch.unsqueeze(indata[:,j:j+windowsize,:],1)
-                        target = torch.unsqueeze(indata[:,j+windowsize:j+(windowsize*(predict_interval+1)),:],1)
+                        input_ = indata[:,j:j+windowsize,:]
+                        target = indata[:,j+windowsize:j+(windowsize*(predict_interval+1)),:]
                         output = self.model(input_)
                         loss = self.criterion(output, target)
                         testloss += loss

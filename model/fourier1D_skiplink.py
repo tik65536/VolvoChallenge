@@ -19,7 +19,7 @@ class Fourier_skiplink(nn.Module):
         self.in_channel = in_channel
         self.project_channel = project_channel
         self.hiddenactivation = hiddenactivation
-        self.fold = (min((self.dim[0] // abs(self.mode)), maxFold)) if ((self.dim[0] // abs(self.mode)) > 0) else 1
+        self.fold = 0
         if (device is None):
             if torch.cuda.is_available():
                 self.device = torch.device('cuda')
@@ -96,7 +96,7 @@ class Fourier_skiplink(nn.Module):
 
     class _Fencoder_convBlock(nn.Module):
 
-        def __init__(self, in_channel, out_channel, hidden_channel, ksize=(3, 3), padding=1 ,
+        def __init__(self, in_channel, out_channel, hidden_channel, ksize=3, padding=1 ,
                      hiddenactivation='GELU', activation='GELU', mode=0, fold=1, inverse=False,
                      dim=None, skiplink=False, outputActivate=True, concatlowhighFreq=False, fftFilter_v=0, fftFilter_h=0, flipV=False):
             super().__init__()
@@ -117,23 +117,20 @@ class Fourier_skiplink(nn.Module):
             self.fftFilter_h = fftFilter_h
             self.flipV = flipV
             self.liftup = [
-                            nn.Conv2d(in_channel,out_channel,kernel_size=1,padding=0),
+                            nn.Conv1d(in_channel,out_channel,kernel_size=1,padding=0),
                             self.activation
                         ]
-            c = 2*self.fold if (not self.inverse) else 1
-            if (self.skiplink):
-                c = 2*c
-            d = self.fold if (not self.inverse) else 1
-            self.conv2d = nn.Sequential(
-                nn.Conv2d(out_channel*c, hidden_channel, kernel_size=1 if (not self.inverse) else ksize, padding=0 if (not self.inverse) else padding),
+            c = 4 if (self.skiplink) else 2
+            self.conv1d = nn.Sequential(
+                nn.Conv1d(self.mode*c if (not self.inverse) else self.out_channel, hidden_channel, kernel_size=1 if (not self.inverse) else ksize, padding=0 if (not self.inverse) else padding),
                 self.hidden_activation,
-                nn.Conv2d(hidden_channel, hidden_channel, kernel_size=ksize, padding=padding),
+                nn.Conv1d(hidden_channel, hidden_channel, kernel_size=ksize, padding=padding),
                 self.hidden_activation,
-                nn.Conv2d(hidden_channel, out_channel*d, kernel_size=ksize, padding=padding),
+                nn.Conv1d(hidden_channel, self.mode if (not self.inverse) else self.out_channel, kernel_size=ksize, padding=padding),
                 self.hidden_activation
             )
             self.project = [
-                                nn.Conv2d(out_channel*2 if (self.dim is None or self.inverse) else out_channel, in_channel,kernel_size=ksize,padding=padding),
+                                nn.Conv1d(out_channel*2 if (self.dim is None or self.inverse) else out_channel, in_channel,kernel_size=ksize,padding=padding),
                                 self.activation
                             ]
             if (not self.outputActivate):
@@ -146,58 +143,35 @@ class Fourier_skiplink(nn.Module):
         def forward(self, x, y=None):
             x_lift = self.liftup(x)
             if (not self.inverse):
-                x = torch.fft.rfft2(x_lift)
-                x = torch.flip(x, [2]) if (self.flipV) else x
-                if (self.fftFilter_v !=0 or self.fftFilter_h !=0):
-                    x = torch.fft.fftshift(x)
-                    filter_rate_v = abs(self.fftFilter_v)
-                    filter_rate_h = abs(self.fftFilter_h)
-                    h ,w = x.shape[2:]
-                    # Filter source reference : https://kai760.medium.com/how-to-use-torch-fft-to-apply-a-high-pass-filter-to-an-image-61d01c752388
-                    cy, cx = int(h/2), int(w/2) # centerness
-                    rh, rw = int(filter_rate_v * cy), int(filter_rate_h * cx) # filter_size
-                    if (self.fftFilter_v>0):
-                        # high pass filter
-                        x[:,:,cy-rh:cy+rh, cx-rw:cx+rw] = 0
-                    else:
-                        # low pass filter
-                        tmp = torch.zeros_like(x,dtype=x.dtype)
-                        tmp[:,:,cy-rh:cy+rh, cx-rw:cx+rw] = x[:,:,cy-rh:cy+rh, cx-rw:cx+rw]
-                        x = tmp
-                    x = torch.fft.ifftshift(x)
-                if (self.concatlowhighFreq):
-                    mode = int(abs(self.mode)/2)
-                    cx = x.shape[-1]
-                    x = x[:,:,:,(cx-mode):(cx+mode)]
-                    mode = self.mode
-                    x = torch.concat([x[:, :, (mode * f):mode + (f * mode),:] for f in range(self.fold)], dim=1)
-                elif (self.mode <0):
-                    x = torch.concat([x[:, :, (abs(self.mode) * f):abs(self.mode) + (f * abs(self.mode)), self.mode:] for f in range(self.fold)], dim=1)
+                x = torch.fft.rfft(x_lift)
+                if (self.mode <0):
+                    x = x[:, :, self.mode:]
                 elif (self.mode>0):
-                    x = torch.concat([x[:, :, (self.mode * f):self.mode + (f * self.mode), :self.mode] for f in range(self.fold)], dim=1)
-                #size = (x.shape[2],x.shape[3]) if (self.dim is None) else self.dim
+                    x = x[:, :, :self.mode]
                 x = torch.view_as_real(x)
-                x_fft = torch.concatenate([x[:,:,:,:,0],x[:,:,:,:,1]],dim=1)
+                x_fft = torch.concatenate([x[:,:,:,0],x[:,:,:,1]],dim=2)
+                x_fft = x_fft.transpose(1, 2).contiguous()
                 if (self.skiplink):
-                    x = self.conv2d(torch.concat([x_fft,y],dim=1))
+                    y = y.transpose(1,2).contiguous()
+                    x = self.conv1d(torch.concat([x_fft,y],dim=1))
                 else:
-                    x = self.conv2d(x_fft)
-                x = torch.concat([x[:, (self.out_channel*f):self.out_channel+(self.out_channel*f),:,:] for f in range(self.fold)], dim=2)
-                x = torch.flip(x, [2]) if (self.flipV) else x
-                x = torch.fft.irfft2(x)
+                    x = self.conv1d(x_fft)
+                #x = torch.concat([x[:, (self.out_channel*f):self.out_channel+(self.out_channel*f),:,:] for f in range(self.fold)], dim=2)
+                x = x.transpose(1, 2).contiguous()
+                x = torch.fft.irfft(x)
                 x = torch.concat([x, x_lift],dim=1) if (self.dim is None) else x
                 x = self.project(x)
                 r = None
                 if (self.dim is None):
                     if (not self.skiplink):
-                        r = x_fft
+                        r = x_fft.transpose(1,2).contiguous()
                 else:
                         r = x_lift
                 return x , r
 
             else:
-                x = self.conv2d(x_lift)
-                x = torch.fft.irfft2(x,self.dim)
+                x = self.conv1d(x_lift)
+                x = torch.fft.irfft(x,self.dim)
                 x = torch.concat([x,y],dim=1)
                 x = self.project(x)
                 if (self.outputActivate):
