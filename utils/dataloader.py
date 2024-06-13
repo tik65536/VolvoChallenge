@@ -137,6 +137,7 @@ class VolvoCSVDataLoader(Dataset):
         readings_cols =  self.dataframe.columns[5:]
         self.dataframe.risk_level = self.dataframe.risk_level.astype('category').cat.codes
         print(f'Num of ChassisID {chassisid}, Max timestep {maxtimestep}, Feature len {len(readings_cols)}')
+        print(readings_cols)
         self.data = np.zeros((chassisid,maxtimestep,len(readings_cols)),dtype='float32')
         self.label = []
         self.grp_idx = []
