@@ -117,7 +117,7 @@ class Fourier_skiplink(nn.Module):
             self.fftFilter_h = fftFilter_h
             self.flipV = flipV
             self.liftup = [
-                            nn.Conv1d(in_channel,out_channel,kernel_size=1,padding=0),
+                            nn.Conv1d(in_channel,out_channel,kernel_size=3,padding='same'),
                             self.activation
                         ]
             c = 4 if (self.skiplink) else 2
@@ -130,7 +130,7 @@ class Fourier_skiplink(nn.Module):
                 self.hidden_activation
             )
             self.project = [
-                                nn.Conv1d(out_channel*2 if (self.dim is None or self.inverse) else out_channel, in_channel,kernel_size=ksize,padding=padding),
+                                nn.Conv1d(out_channel*2 if (self.dim is None or self.inverse) else out_channel, in_channel,kernel_size=3,padding='same'),
                                 self.activation
                             ]
             if (not self.outputActivate):
